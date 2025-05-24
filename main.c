@@ -1,90 +1,94 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-#include <stdlib.h>
+#include <stdio.h>         // Для введення та виведення       
+#include <math.h>          // Для математичних функцій
+#include <stdlib.h>        // Для виведення укр. тексту в терміналі
 
-#define R 8.31696
-#define T0 400.0
-#define T 1200.0
-#define DT 60.0
-#define B 50.0
-#define M 28.96
-#define K 1.402
-#define K_G ((K - 1)/K)
+#define R 8.31696          // Універсальна газова потоку
+#define T0 400.0           // Початкова температура 
+#define T 1200.0           // Загальний час
+#define DT 60.0            // Крок зміни часу
+#define B 50.0             // Зміна температури
+#define M 28.96            // Молекулярна маса газу
+#define K 1.402            // Адіабадичний коефіцієнт
+#define K_G ((K - 1)/K)    // Допоміжна стала для обчислень
 
-struct VariantData {
-    double Ph;
-    double A;
-    double P;
+struct VariantData {       // Струкртура для зберігання параментів варіанта
+    double Ph;             // Початковий тиск 
+    double A;              // Амплітуда зміни тиску
+    double P;              // Тиск у резервуарі
 };
 
-double calculate_P0(double t, double Ph, double A) {
-    if (t <= T / 3.0) {
-        return Ph + 3.0 * A * t / T;
-    } else if (t <= 2.0 * T / 3.0) {
-        return Ph + A;
-    } else {
-        return Ph + A - (t - 2.0 * T / 3.0) * 3.0 * A / T;
+double calculate_P0(double t, double Ph, double A) {        // Обчислення зовнішнього тиску P0 залежно від часу
+    if (t <= T / 3.0) {                                     // Якщо час знаходиться у першій третині періоду
+        return Ph + 3.0 * A * t / T;                        // Тоді тиск зростає
+    } else if (t <= 2.0 * T / 3.0) {                        // Якщо час знаходиться у другій третині періоду
+        return Ph + A;                                      // Тоді тиск стабільний
+    } else {                                                // Якщо час знаходиться у третій третині періоду
+        return Ph + A - (t - 2.0 * T / 3.0) * 3.0 * A / T;  // Тоді тиск зменьшується
     }
 }
 
-double calculate_Tc(double t) {
-    if (t <= T / 3.0) {
-        return T0;
-    } else if (t <= 2.0 * T / 3.0) {
-        return T0 + (t - T / 3.0) * 3.0 * B / T;
-    } else {
-        return T0 + B;
+double calculate_Tc(double t) {                             // Обчислення температури навколишнього середовища залежно від часу
+    if (t <= T / 3.0) {                                     // Якщо час знаходиться у першій третині
+        return T0;                                          // Тоді температура стала Tc = T0
+    } else if (t <= 2.0 * T / 3.0) {                        // Якщо час знаходиться у другій третині
+        return T0 + (t - T / 3.0) * 3.0 * B / T;            // Тоді температура зростає
+    } else {                                                // Якщо час знаходиться у третій третині 
+        return T0 + B;                                      // Тоді температура T0 + B
     }
 }
 
-double calculate_w(double P, double P0, double Tc) {
+double calculate_w(double P, double P0, double Tc) {        // Зчитування трьох рядків з вхідного файлу "input.txt"
     double fraction = pow(P / P0, K_G);
+    if (P >= P0){
+        return 0.0;
+    }
     return sqrt((2.0 * R * Tc) / (K_G * M)) * sqrt(1.0 - fraction);
 }
 
 int main() {
-    system("chcp 65001");
-    struct VariantData variants[3];
+    system("chcp 65001");                                                 // Для підтримки в коді українських символів
+
+    struct VariantData variants[3];                                       // Масив з трьох наборів вхідних параметрів
     
-    FILE *input = fopen("input.txt", "r");
+    FILE *input = fopen("input.txt", "r");                                // Відкриття вхідного файлу
     if (!input) {
         printf("Помилка при відкритті файлу input.txt\n");
         return 1;
     }
     
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i+=1) {                                        // Зчитування трьох рядків з вхідного файлу "input.txt"
         if (fscanf(input, "%lf %lf %lf", &variants[i].Ph, &variants[i].A, &variants[i].P) != 3) {
             printf("Помилка при читанні даних з файлу\n");
             fclose(input);
             return 1;
         }
     }
-    fclose(input);
+    fclose(input);                                                       // Закриття вхідного файлу
 
-    FILE *output = fopen("output.txt", "w");
+
+    FILE *output = fopen("output.txt", "w");                             // Відкриття вихідного файлу
     if (!output) {
         printf("Помилка при відкритті файлу output.txt\n");
         return 1;
     }
 
-    fprintf(output, "Time\t    w1         \tw2         \tw3\n");
+    fprintf(output, "Time\t    w1         \tw2         \tw3\n");         // Запис заголовка таблиці у файл
 
-    for (double t = 0.0; t <= T; t += DT) {
-        fprintf(output, "%.2f", t);
+    for (double t = 0.0; t <= T; t += DT) {                              // Основний цикл по часу від 0 до T з кроком DT
+        fprintf(output, "%.2f", t);                                      // Запис часу
 
-        for (int i = 0; i < 3; i++) {
-            double P0 = calculate_P0(t, variants[i].Ph, variants[i].A);
-            double Tc = calculate_Tc(t);
-            double w = calculate_w(variants[i].P, P0, Tc);
-            fprintf(output, "\t%.6f", w);
+        for (int i = 0; i < 3; i+=1) {                                   // Обчислення витрат для кожного з варіанту
+            double P0 = calculate_P0(t, variants[i].Ph, variants[i].A);  
+            double Tc = calculate_Tc(t);                                 
+            double w = calculate_w(variants[i].P, P0, Tc);               
+            fprintf(output, "\t%.6f", w);                                // Запис результату у файл
         }
 
-        fprintf(output, "\n");
+        fprintf(output, "\n");                                           // Перехід на новий рядок
     }
 
-    fclose(output);
+    fclose(output);                                                      // Закриття вихідного файлу
 
-    printf("Результати збережено в output.txt\n");
+    printf("Результати збережено в output.txt\n");                       // Повідомлення про успішне завершення
     return 0;
 }
