@@ -14,7 +14,7 @@
 struct VariantData {       // Структура для зберігання параментрів варіанта
     double Ph;             // Початковий тиск 
     double A;              // Амплітуда зміни тиску
-    double P;              // Тиск 
+    double P;              // Тиск навколишнього середовища
 };
 
 double calculate_P0(double t, double Ph, double A) {        // Обчислення тиску в посудині P0 залежно від часу
